@@ -196,6 +196,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
   private @MonotonicNonNull List<String> serversToTry = null;
   private final ResourcePackHandler resourcePackHandler;
   private final BundleDelimiterHandler bundleHandler = new BundleDelimiterHandler(this);
+  private boolean firstConfiguration = true;
 
   private @Nullable String clientBrand;
   private @Nullable Locale effectiveLocale;
@@ -1377,8 +1378,13 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player, 
           connection.write(StartUpdatePacket.INSTANCE);
           connection.pendingConfigurationSwitch = true;
           connection.getChannel().pipeline().get(MinecraftEncoder.class).setState(StateRegistry.CONFIG);
-          // Make sure we don't send any play packets to the player after update start
-          connection.addPlayPacketQueueHandler();
+          if (firstConfiguration) {
+            // Only use the play packet queue on initial configuration, as it breaks reconfiguration
+
+            // Make sure we don't send any play packets to the player after update start
+            connection.addPlayPacketQueueHandler();
+            firstConfiguration = false;
+          }
         }, connection.eventLoop()).exceptionally((ex) -> {
           logger.error("Error switching player connection to config state", ex);
           return null;
